@@ -1,91 +1,75 @@
 package com.vytrack.pages;
 
-import io.github.bonigarcia.wdm.WebDriverManager;
-import org.openqa.selenium.Platform;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebDriverException;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
-import org.openqa.selenium.edge.EdgeDriver;
-import org.openqa.selenium.firefox.FirefoxDriver;
-import org.openqa.selenium.firefox.FirefoxOptions;
-import org.openqa.selenium.ie.InternetExplorerDriver;
-import org.openqa.selenium.remote.RemoteWebDriver;
-import org.openqa.selenium.safari.SafariDriver;
+import com.vytrack.utilities.ConfigurationReader;
+import com.vytrack.utilities.Driver;
+import org.openqa.selenium.Keys;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.FindBy;
+import org.openqa.selenium.support.PageFactory;
 
-import java.net.MalformedURLException;
-import java.net.URL;
+//according to page object model design
+//we have to create corresponded page class
+//for each page of application
+//login page = login page class
+//every page class will store webelements and methods related to that page
+public class LoginPage extends BasePage {
 
-public class Driver {
-    private static ThreadLocal<WebDriver> driverPool = new ThreadLocal<>();
+    @FindBy(id = "prependedInput") //this line will initialize web element
+    public WebElement userNameInput;
 
-    private Driver() {
+    @FindBy(id = "prependedInput2")//without findby, web element will be null
+    public WebElement passwordInput;
 
+    @FindBy(id = "_submit")
+    public WebElement loginButton;
+
+    @FindBy(css = "[class='alert alert-error']")
+    public WebElement warningMessage;
+
+    public LoginPage() {
+        //it's mandatory if you want to use @FindBy annotation
+        //this means LoginPage class
+        //Driver.get() return webdriver object
+        PageFactory.initElements(Driver.get(), this);
     }
 
-    public static WebDriver get() {
-        //if this thread doesn't have a web driver yet - create it and add to pool
-        if (driverPool.get() == null) {
-            System.out.println("TRYING TO CREATE DRIVER");
-            // this line will tell which browser should open based on the value from properties file
-            String browserParamFromEnv = System.getProperty("browser");
-            String browser = browserParamFromEnv == null ? ConfigurationReader.getProperty("browser") : browserParamFromEnv;
-            switch (browser) {
-                case "chrome":
-                    WebDriverManager.chromedriver().setup();
-                    driverPool.set(new ChromeDriver());
-                    break;
-                case "chrome_headless":
-                    WebDriverManager.chromedriver().setup();
-                    driverPool.set(new ChromeDriver(new ChromeOptions().setHeadless(true)));
-                    break;
-                case "firefox":
-                    WebDriverManager.firefoxdriver().setup();
-                    driverPool.set(new FirefoxDriver());
-                    break;
-                case "firefox_headless":
-                    WebDriverManager.firefoxdriver().setup();
-                    driverPool.set(new FirefoxDriver(new FirefoxOptions().setHeadless(true)));
-                    break;
-                case "ie":
-                    if (!System.getProperty("os.name").toLowerCase().contains("windows")) {
-                        throw new WebDriverException("Your OS doesn't support Internet Explorer");
-                    }
-                    WebDriverManager.iedriver().setup();
-                    driverPool.set(new InternetExplorerDriver());
-                    break;
-                case "edge":
-                    if (!System.getProperty("os.name").toLowerCase().contains("windows")) {
-                        throw new WebDriverException("Your OS doesn't support Edge");
-                    }
-                    WebDriverManager.edgedriver().setup();
-                    driverPool.set(new EdgeDriver());
-                    break;
-                case "safari":
-                    if (!System.getProperty("os.name").toLowerCase().contains("mac")) {
-                        throw new WebDriverException("Your OS doesn't support Safari");
-                    }
-                    WebDriverManager.getInstance(SafariDriver.class).setup();
-                    driverPool.set(new SafariDriver());
-                    break;
-                case "remote_chrome":
-                    try {
-                        ChromeOptions chromeOptions = new ChromeOptions();
-                        chromeOptions.setCapability("platform", Platform.ANY);
-                        driverPool.set(new RemoteWebDriver(new URL("http://localhost:4444/wd/hub"), chromeOptions));
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                    break;
-            }
+    /**
+     * reusable login method
+     * just call this method to login
+     * provide username and password as parameters
+     *
+     * @param userName
+     * @param password
+     */
+    public void login(String userName, String password) {
+        userNameInput.sendKeys(userName);
+        //Keys.ENTER to replace login click
+        passwordInput.sendKeys(password, Keys.ENTER);
+    }
 
+    public void login() {
+        login(ConfigurationReader.getProperty("username"), ConfigurationReader.getProperty("password"));
+    }
+
+    public void login(String role) {
+        String userName = "";
+        String password = ConfigurationReader.getProperty("password");
+
+        switch (role) {
+            case "driver":
+                userName = ConfigurationReader.getProperty("driver.username");
+                break;
+            case "store manager":
+                userName = ConfigurationReader.getProperty("store.manager.username");
+                break;
+            case "sales manager":
+                userName = ConfigurationReader.getProperty("sales.manager.username");
+                break;
+            default:
+                throw new RuntimeException("Invalid role!");
         }
-        //return corresponded to thread id webdriver object
-        return driverPool.get();
+        login(userName, password);
     }
 
-    public static void close() {
-        driverPool.get().quit();
-        driverPool.remove();
-    }
+
 }
